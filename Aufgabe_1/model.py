@@ -19,13 +19,19 @@ class SingleMassOscillator(Model):
     def __init__(self, iniState, m, k, d):
         super().__init__(iniState)
         #your implementation here
+        self.__m__ = m
+        self.__k__ = k
+        self.__d__ = d
+
+        #Lehrsches Dämpfungsmaß
+        #self.__d__ = 2*d*np.sqrt(self.__m__*self.__k__)
 
     def dydt(self, t):
         """Compute the derivatives of the state (velocity and acceleration)."""
         #----------------------------------------------------------------------------
-        #  | implementation here  |
-        # \ /                    \ /
-        #  v                      v
+        #  |  implementation here  |
+        # \ /                     \ /
+        #  v                       v
         position = 0.
         velocity = 0.
         acceleration = 0.        
