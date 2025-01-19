@@ -26,9 +26,12 @@ class Widget(QWidget):
         self.layout.addWidget(self.QVTKWidget)
         self.setLayout(self.layout)
 
-        self.renderer = vtkRenderer()                       # Erstelle einen VTK-Renderer
+
+        self.renderer = vtkRenderer()                          # Erstelle einen VTK-Renderer
         self.renderWindow = self.QVTKWidget.GetRenderWindow()  # Füge den Renderer hinzu
         self.renderWindow.AddRenderer(self.renderer)
+        #Hintergrundfarbe festlegen, Normierung zwischen 0 und 1
+        self.renderer.SetBackground([element/255 for element in mbsModel.backgroundcolor])  
 
         # Interactor
         interactor = self.QVTKWidget.GetRenderWindow().GetInteractor()
