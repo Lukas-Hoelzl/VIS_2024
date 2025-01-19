@@ -14,7 +14,11 @@ def run_simulation():
     # Parameters
     m = 1.0      # mass (kg)
     k = 100000.0     # stiffness (N/m)
+<<<<<<< HEAD
     d = 0.01      # damping coefficient
+=======
+    d = 0.001      # damping coefficient
+>>>>>>> 6cc5ad6eaee7d4dfc6bfdfe8885d3fac2138cb4b
 
     # initial conditions
     iniStates = np.array([1.0, 0.0])
