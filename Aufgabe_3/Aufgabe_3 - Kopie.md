@@ -9,7 +9,7 @@ Erarbeitung einer Qt-Anwendung (PySide6) mit Integration von VTK.
 ## **Aufgabenstellung**
 
 ### **1. Verwendung bestehender Module**
-Nutzen Sie die in `/VIS_2024/Aufgabe_2` bereitgestellten Module, wie `mbsObject`, `mbsModel` usw. abgehakt
+Nutzen Sie die in `/VIS_2024/Aufgabe_2` bereitgestellten Module, wie `mbsObject`, `mbsModel` usw.
 
 ### **2. Erstellung einer Qt-Widgets-Anwendung**
 Implementieren Sie eine Anwendung mit den folgenden **Mindestanforderungen**:
