@@ -73,3 +73,11 @@ class mbsModel:
     def showModel(self, renderer):
         for object in self.__mbsObjectList:
             object.show(renderer)
+
+    def getlistofmbsObject(self):
+        return self.__mbsObjectList
+    
+   # def updateActor(self, mbsObject, renderer):
+    #    mbsObject.hide(renderer)
+    #    mbsObject.updateActor()
+    #    mbsObject.show(renderer)
