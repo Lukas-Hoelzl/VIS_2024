@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
             layout.addLayout(slider_layout)
 
         # OK-Button zum Bestätigen/Schließen
-        ok_button = QPushButton("Berhard")
+        ok_button = QPushButton("Bernhard")
         ok_button.clicked.connect(lambda: self.push_OK(bodywindow))
         main_layout.addWidget(ok_button)
 
