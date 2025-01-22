@@ -1,235 +1,258 @@
 from __future__ import annotations
 
-# Importieren der benötigten Klassen und Funktionen aus PySide6
+import os
+import vtk
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QAction, QKeySequence, QScreen, QColor
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QFileDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QColorDialog,
-    QDialog,
-    QPushButton,
-    QGroupBox,
-    QLabel,
-    QSlider,
-    QLineEdit
+    QMainWindow, QFileDialog, QVBoxLayout, QHBoxLayout, QWidget,
+    QColorDialog, QDialog, QPushButton, QGroupBox, QLabel,
+    QSlider, QLineEdit, QStatusBar
 )
 
-# Importieren eigener Klassen
 from main_widget import Widget
 from mbsModel import mbsModel
 
-# Definition der Hauptklasse "MainWindow", abgeleitet von "QMainWindow"
+# Erweiterte MainWindow-Klasse mit Screenshot-Funktion
 class MainWindow(QMainWindow):
     def __init__(self):
-        # Aufruf des Konstruktors der Basisklasse QMainWindow
-        QMainWindow.__init__(self)
+        super().__init__()
         self.setWindowTitle("FDD-File Reader")
 
-        # Erstellen der Menüleiste und Hinzufügen von Menüpunkten
+        # Menüleiste anlegen
         self.menu = self.menuBar()
         self.file_menu = self.menu.addMenu("File")
-
-        # Hilfe-Menü (Help)
-        self.help_menu = self.menu.addMenu("Help")
-        help_action = QAction("Help", self)
-        help_action.triggered.connect(self.helpfunc)
-        self.help_menu.addAction(help_action)
-
-        # Einstellungen-Menü (Settings)
         self.settings_menu = self.menu.addMenu("Settings")
+        self.help_menu = self.menu.addMenu("Help")
 
-        # Hintergrund-Einstellung (Background)
-        self.background_action = QAction("Background", self)
-        self.settings_menu.addAction(self.background_action)
-        self.background_action.triggered.connect(lambda: self.backgroundfunc())
-
-        # Einstellung für Körper-Farbe (Body Color)
-        self.body_action = QAction("Body", self)
-        self.settings_menu.addAction(self.body_action)
-        self.body_action.triggered.connect(lambda: self.bodyfunc())
-
-        # Menüeintrag zum Laden einer Datei
+        # Actions für das Datei-Menü
         load_action = QAction("Load", self)
         load_action.triggered.connect(self.loadfile)
         self.file_menu.addAction(load_action)
 
-        # Menüeintrag zum Speichern einer Datei
         save_action = QAction("Save", self)
         save_action.triggered.connect(self.savemodel)
         self.file_menu.addAction(save_action)
 
-        # Menüeintrag zum Importieren einer Datei
         import_action = QAction("Import", self)
         import_action.triggered.connect(self.importfile)
         self.file_menu.addAction(import_action)
 
-        # Menüeintrag zum Beenden der Anwendung (Exit)
         exit_action = QAction("Exit", self)
         exit_action.setShortcut(QKeySequence.Quit)
         exit_action.triggered.connect(self.close)
         self.file_menu.addAction(exit_action)
 
-        # Erstellen einer Statusleiste und Setzen einer Statusmeldung
+        # Actions für das Settings-Menü
+        self.background_action = QAction("Background", self)
+        self.background_action.triggered.connect(self.backgroundfunc)
+        self.settings_menu.addAction(self.background_action)
+
+        self.body_action = QAction("Body", self)
+        self.body_action.triggered.connect(self.bodyfunc)
+        self.settings_menu.addAction(self.body_action)
+
+        # NEU: Screenshot-Action hinzufügen
+        screenshot_action = QAction("Screenshot", self)
+        screenshot_action.setShortcut("Ctrl+Shift+S")
+        screenshot_action.triggered.connect(self.save_screenshot)
+        self.settings_menu.addAction(screenshot_action)
+
+        # Actions für das Hilfe-Menü
+        help_action = QAction("Help", self)
+        help_action.triggered.connect(self.helpfunc)
+        self.help_menu.addAction(help_action)
+
+        # Status-Bar
         self.status = self.statusBar()
-        self.status.showMessage("Status wird geladen ...", 10000)
+        self.status.showMessage("Status wird geladen ...", 5000)
 
-        # Einstellen der Fenstergröße (hier 80% der Bildschirmbreite und 70% der Höhe)
+        # Größe des Hauptfensters
         geometry = self.screen().availableGeometry()
-        self.setFixedSize(geometry.width() * 0.8, geometry.height() * 0.7)
+        self.setFixedSize(int(geometry.width() * 0.8), int(geometry.height() * 0.7))
 
-        # Erstellen des Haupt-Widgets (Widget) und Setzen als zentrales Widget
+        # Zentrales Widget (VTK-Ansicht)
         self.Widget = Widget(self)
         self.setCentralWidget(self.Widget)
 
-    # Methode zum Laden einer Datei
+        # Modellplaceholder
+        self.mbsModel = None
+
+    # -- Slot-Methoden für die Menü-Aktionen ----------------------------------
+
     def loadfile(self):
-        # Öffnet ein Dateidialog-Fenster, um eine Datei auszuwählen (Filter auf *.json)
         filePath, _ = QFileDialog.getOpenFileName(self, "load File", "", "pyFreeDyn-File (*.json)")
-        # Erzeugt ein neues mbsModel-Objekt und lädt die Datenbank aus der ausgewählten Datei
-        self.mbsModel = mbsModel()
-        self.mbsModel.loadDatabase(filePath)
-        # Rendert das geladene Modell in unserem Hauptwidget
-        self.Widget.rendererMbsModel(self.mbsModel)
-        # Setzt eine kurze Statusmeldung
-        self.status.showMessage("File loaded", 2000)
+        if filePath:
+            self.mbsModel = mbsModel()
+            self.mbsModel.loadDatabase(filePath)
+            self.Widget.rendererMbsModel(self.mbsModel)
+            self.status.showMessage(f"File loaded: {filePath}", 2000)
 
-    # Methode zum Importieren einer Datei (hier *.fdd)
     def importfile(self):
-        # Öffnet ein Dateidialog-Fenster, um eine Datei auszuwählen (Filter auf *.fdd)
         filePath, _ = QFileDialog.getOpenFileName(self, "import File", "", "pyFreeDyn-File (*.fdd)")
-        # Erzeugt ein neues mbsModel-Objekt und importiert das FDD-File
-        self.mbsModel = mbsModel()
-        self.mbsModel.importFddFile(filePath)
-        # Rendert das importierte Modell
-        self.Widget.rendererMbsModel(self.mbsModel)
-        # Setzt eine kurze Statusmeldung
-        self.status.showMessage("File imported", 2000)
+        if filePath:
+            self.mbsModel = mbsModel()
+            self.mbsModel.importFddFile(filePath)
+            self.Widget.rendererMbsModel(self.mbsModel)
+            self.status.showMessage(f"File imported: {filePath}", 2000)
 
-    # Methode zum Speichern des Modells
     def savemodel(self):
-        # Öffnet ein Dateidialog-Fenster, um einen Speicherort auszuwählen (Filter auf *.json)
+        if self.mbsModel is None:
+            self.status.showMessage("No model to save!", 2000)
+            return
+
         filePath, _ = QFileDialog.getSaveFileName(self, "save File", "", "pyFreeDyn-File (*.json)")
-        # Speichert das aktuelle mbsModel in der angegebenen Datei
-        self.mbsModel.saveDatabase(filePath)
-        # Setzt eine kurze Statusmeldung
-        self.status.showMessage("File saved", 2000)
+        if filePath:
+            self.mbsModel.saveDatabase(filePath)
+            self.status.showMessage(f"File saved: {filePath}", 2000)
 
-    # Methode für die Hilfe-Funktion
     def helpfunc(self):
-        # Zeigt eine Statusmeldung an
-        self.status.showMessage("Hilfe ist Aussichtslos!", 100000)
+        self.status.showMessage("Hilfe ist Aussichtslos!", 8000)
 
-    # Methode zum Ändern der Hintergrundfarbe
     def backgroundfunc(self):
-        # Öffnet ein Farbwahl-Dialogfenster
-        backgroundcolor = QColorDialog.getColor()
-        # Wenn eine gültige Farbe ausgewählt wurde, extrahieren wir RGB-Werte
-        if backgroundcolor.isValid():
-            self.backgroundcolor_RGB = backgroundcolor.red(), backgroundcolor.green(), backgroundcolor.blue()
-        # Setzen der Hintergrundfarbe im mbsModel und Aktualisieren des Renderers
-        self.mbsModel.backgroundcolor = self.backgroundcolor_RGB
-        self.Widget.renderer.SetBackground([element / 255 for element in self.mbsModel.backgroundcolor])
+        if self.mbsModel is None:
+            self.status.showMessage("No model loaded!", 2000)
+            return
 
-    # Methode zum Bearbeiten der Körpereigenschaften
+        backgroundcolor = QColorDialog.getColor()
+        if backgroundcolor.isValid():
+            self.mbsModel.backgroundcolor = [
+                backgroundcolor.red(),
+                backgroundcolor.green(),
+                backgroundcolor.blue()
+            ]
+            if hasattr(self.Widget, "renderer"):
+                self.Widget.renderer.SetBackground(
+                    [c / 255 for c in self.mbsModel.backgroundcolor]
+                )
+                self.Widget.renderer.GetRenderWindow().Render()
+
     def bodyfunc(self):
-        # Erstellen eines Dialogfensters zur Konfiguration der Körper
-        bodywindow = QDialog()
+        if self.mbsModel is None:
+            self.status.showMessage("No model loaded!", 2000)
+            return
+
+        # Beispiel: Body-Dialog aufrufen
+        bodywindow = QDialog(self)
         bodywindow.setWindowTitle("Eigenschaften der Körper")
         main_layout = QVBoxLayout(bodywindow)
 
-        # Liste aller Körper im Modell
         self.listofBodys = []
         for obj in self.mbsModel.getlistofmbsObject():
             if obj.getType() == "Body":
                 self.listofBodys.append(obj)
 
-        # Für jede gefundene Instanz eines Körpers erstellen wir ein eigenes Unterfenster
         self.Anzeigefarbe = []
         for body in self.listofBodys:
-            # Erzeugt eine Gruppierung (QGroupBox) mit dem Namen des Körpers
-            # Achtung: f-Strings interpretieren Anführungszeichen in den Parametern
-            unterwindow = QGroupBox(f"Eigenschaften von {body.parameter['name']['value']}")
-            layout = QVBoxLayout(unterwindow)
-            main_layout.addWidget(unterwindow)
+            group_box = QGroupBox(f"Eigenschaften von {body.parameter['name']['value']}")
+            layout = QVBoxLayout(group_box)
+            main_layout.addWidget(group_box)
 
-            # Label und QLineEdit zur Anzeige der aktuellen Körperfarbe
-            label_color = QLabel("Farbe")
+            label_color = QLabel("Farbe:")
             layout.addWidget(label_color)
-            self.Anzeigefarbe.append(QLineEdit())
-            self.Anzeigefarbe[self.listofBodys.index(body)].setReadOnly(True)
-            # Erstellen eines QColor-Objekts aus den RGB-Werten des Körpers
-            color_show = QColor(body.parameter["color"]["value"][0],
-                                body.parameter["color"]["value"][1],
-                                body.parameter["color"]["value"][2])
-            # Hintergrundfarbe des QLineEdit-Feldes entsprechend der Körperfarbe setzen
-            self.Anzeigefarbe[self.listofBodys.index(body)].setStyleSheet(f"background-color: {color_show.name()};")
-            layout.addWidget(self.Anzeigefarbe[self.listofBodys.index(body)])
 
-            # Erstellen eines Buttons zum Öffnen des Farbdialogs für diesen Körper
-            Color_button = QPushButton("Farbe wählen")
-            Color_button.clicked.connect(
-                lambda checked, bodycolor=body, index=self.listofBodys.index(body): self.bodycolor(bodycolor, index)
+            color_edit = QLineEdit()
+            color_edit.setReadOnly(True)
+
+            color_show = QColor(
+                body.parameter["color"]["value"][0],
+                body.parameter["color"]["value"][1],
+                body.parameter["color"]["value"][2]
             )
-            layout.addWidget(Color_button)
+            color_edit.setStyleSheet(f"background-color: {color_show.name()};")
+            layout.addWidget(color_edit)
 
-            # Erstellen eines Labels und Sliders für die Transparenz-Einstellung
-            label_transparency = QLabel("Transparenz")
+            self.Anzeigefarbe.append(color_edit)
+
+            color_button = QPushButton("Farbe wählen")
+            color_button.clicked.connect(
+                lambda _, b=body, idx=len(self.Anzeigefarbe)-1: self.bodycolor(b, idx)
+            )
+            layout.addWidget(color_button)
+
+            label_transparency = QLabel("Transparenz:")
             layout.addWidget(label_transparency)
-            layout_slider = QHBoxLayout()
-            label_left = QLabel("0%")
-            layout_slider.addWidget(label_left)
 
-            # Slider wird von 0 bis 100% gesetzt
-            transparency_slider = QSlider(Qt.Horizontal)
-            transparency_slider.setMinimum(0)
-            transparency_slider.setMaximum(100)
-            # Der initiale Wert wird aus dem Modell geholt und umgerechnet in Prozent
-            transparency_slider.setValue(body.parameter["transparency"]["value"] / 255 * 100)
-            # Verbinden der Value-Änderung mit einer Methode, die den Wert im Modell aktualisiert
-            transparency_slider.valueChanged.connect(
-                lambda value, bodyslider=body: self.transparency_update(value, bodyslider)
+            slider_layout = QHBoxLayout()
+            slider_layout.addWidget(QLabel("0%"))
+            trans_slider = QSlider(Qt.Horizontal)
+            trans_slider.setMinimum(0)
+            trans_slider.setMaximum(100)
+            current_t = body.parameter["transparency"]["value"]
+            trans_slider.setValue(int(current_t / 255 * 100))
+            trans_slider.valueChanged.connect(
+                lambda val, b=body: self.transparency_update(val, b)
             )
-            layout_slider.addWidget(transparency_slider)
+            slider_layout.addWidget(trans_slider)
+            slider_layout.addWidget(QLabel("100%"))
+            layout.addLayout(slider_layout)
 
-            label_right = QLabel("100%")
-            layout_slider.addWidget(label_right)
-            layout.addLayout(layout_slider)
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(lambda: self.push_OK(bodywindow))
+        main_layout.addWidget(ok_button)
 
-        # OK-Button zum Speichern/Aktualisieren der Änderungen
-        OK_button = QPushButton("Bernhard")  # Humorvoller Button-Text
-        OK_button.clicked.connect(lambda: self.push_OK(bodywindow))
-        main_layout.addWidget(OK_button)
-
-        # Öffnen des Dialogfensters im modalen Modus
         bodywindow.exec()
 
-    # Methode zum Öffnen des Farbwahl-Dialogs für einen bestimmten Körper
-    def bodycolor(self, body, indexbody):
+    def bodycolor(self, body, index):
         bodycolor = QColorDialog.getColor()
-        # Falls eine gültige Farbe ausgewählt wurde, werden die RGB-Werte im Modell aktualisiert
         if bodycolor.isValid():
-            body.parameter["color"]["value"] = (bodycolor.red(), bodycolor.green(), bodycolor.blue())
-            # Aktualisieren des Hintergrunds in QLineEdit entsprechend der gewählten Farbe
-            self.Anzeigefarbe[indexbody].setStyleSheet(f"background-color: {bodycolor.name()};")
+            body.parameter["color"]["value"] = (
+                bodycolor.red(),
+                bodycolor.green(),
+                bodycolor.blue()
+            )
+            # Farb-Update im zugehörigen QLineEdit
+            self.Anzeigefarbe[index].setStyleSheet(f"background-color: {bodycolor.name()};")
 
-    # Methode zum Aktualisieren der Transparenz im Modell
     def transparency_update(self, value, body):
-        # Umrechnung des Slidervalues (0–100%) in einen Transparenzwert (0–255)
         body.parameter["transparency"]["value"] = value * 255 / 100
 
-    # Methode, die aufgerufen wird, wenn der Benutzer den OK-Button klickt
-    def push_OK(self, window):
-        # Für jeden Körper wird die Darstellung im Renderer erneuert
-        for body in self.listofBodys:
-            # Zuerst den alten Actor verstecken
-            body.hide(self.Widget.renderer)
-            # Actor mit neuen Eigenschaften (Farbe, Transparenz) aktualisieren
-            body.updateActor()
-            # Danach den Actor wieder im Renderer anzeigen
-            body.show(self.Widget.renderer)
-        # Schließen des Dialogfensters
-        window.accept()
+    def push_OK(self, dialog):
+        if hasattr(self, "listofBodys"):
+            for b in self.listofBodys:
+                b.hide(self.Widget.renderer)  # Entfernt bisherigen Actor
+                b.updateActor()               # Erstellt neuen Actor
+                b.show(self.Widget.renderer)  # Fügt neuen Actor hinzu
+        dialog.accept()
+
+    # ------------------- NEU: Screenshot-Funktion -------------------
+    def save_screenshot(self):
+        """
+        Erstellt einen Screenshot des aktuellen VTK-Renderfensters
+        und speichert ihn als PNG oder JPEG-Datei.
+        """
+        if not hasattr(self.Widget, "QVTKWidget"):
+            self.status.showMessage("Keine QVTK-Ansicht gefunden!", 2000)
+            return
+
+        filePath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Screenshot",
+            "",
+            "PNG Image (*.png);;JPEG Image (*.jpg);;All Files (*)"
+        )
+        if not filePath:
+            return  # Abbrechen
+
+        # Erzeugt ein Fenster->Bild-Filter für die VTK-Ansicht
+        render_window = self.Widget.QVTKWidget.GetRenderWindow()
+        w2i = vtk.vtkWindowToImageFilter()
+        w2i.SetInput(render_window)
+        # Wähle z.B. RGB statt RGBA oder setze AA-Optionen, falls gewünscht
+        w2i.SetInputBufferTypeToRGB()
+        w2i.ReadFrontBufferOff()
+        w2i.Update()
+
+        # Dateiendung prüfen, um passenden Writer auszuwählen (PNGWriter oder JPEGWriter)
+        _, ext = os.path.splitext(filePath)
+        ext = ext.lower()
+        if ext in [".jpg", ".jpeg"]:
+            writer = vtk.vtkJPEGWriter()
+        else:
+            writer = vtk.vtkPNGWriter()
+
+        writer.SetFileName(filePath)
+        writer.SetInputConnection(w2i.GetOutputPort())
+        writer.Write()
+
+        self.status.showMessage(f"Screenshot saved to {filePath}", 2000)
